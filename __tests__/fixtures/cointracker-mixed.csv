@@ -1,0 +1,8 @@
+Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
+01/15/2024 10:00:00,1.0,BTC,30000,USD,10,USD,Coinbase,,First BTC purchase
+03/01/2024 12:00:00,15,ETH,0.5,BTC,,,Binance,,
+04/01/2024 08:00:00,0.05,ETH,,,,,Kraken,,staking reward
+05/01/2024 09:00:00,100,SOL,,,,,Phantom,,airdrop
+06/15/2024 14:00:00,50000,USD,1.0,ETH,5,USD,Coinbase,,
+07/01/2024 10:00:00,,,0.01,BTC,,,Coinbase,,transfer
+08/01/2024 12:00:00,,,500,SOL,0.1,SOL,Coinbase,,

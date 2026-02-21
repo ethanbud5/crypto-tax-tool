@@ -1,0 +1,3 @@
+Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
+01/15/2024 10:00:00,1.0,BTC,30000,USD,10,USD,Coinbase,,First BTC purchase
+06/15/2024 14:00:00,25000,USD,0.5,BTC,5,USD,Coinbase,,Partial sell

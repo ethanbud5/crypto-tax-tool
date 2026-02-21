@@ -1,0 +1,6 @@
+date_time,transaction_type,sent_asset,sent_amount,sent_asset_price_usd,received_asset,received_amount,received_asset_price_usd,fee_amount,fee_asset,fee_usd,wallet_or_exchange,tx_hash,notes
+2024-01-15T10:00:00Z,BUY,,,,BTC,2.0,30000,,,,Coinbase,,
+2024-02-15T10:00:00Z,BUY,,,,BTC,1.0,35000,,,,Kraken,,
+2024-03-15T10:00:00Z,SEND,BTC,1.0,40000,,,,0.0001,BTC,4,Coinbase,tx123,Transfer to cold wallet
+2024-03-15T10:01:00Z,RECEIVE,,,,BTC,0.9999,40000,,,,ColdWallet,tx123,Received from Coinbase
+2024-06-15T10:00:00Z,SELL,BTC,1.0,50000,,,,,,,Kraken,,Sold from Kraken

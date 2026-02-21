@@ -1,0 +1,4 @@
+Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
+01/15/2024 10:00:00,10.0,ETH,25000,USD,,,Kraken,,
+03/15/2024 10:00:00,0.1,ETH,,,,,Kraken,,staking reward
+06/15/2024 10:00:00,0.15,ETH,,,,,Kraken,,staking reward

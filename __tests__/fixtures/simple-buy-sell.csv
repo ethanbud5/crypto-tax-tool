@@ -1,0 +1,3 @@
+date_time,transaction_type,sent_asset,sent_amount,sent_asset_price_usd,received_asset,received_amount,received_asset_price_usd,fee_amount,fee_asset,fee_usd,wallet_or_exchange,tx_hash,notes
+2024-01-15T10:00:00Z,BUY,,,,BTC,1.0,30000,10,USD,10,Coinbase,abc123,First BTC purchase
+2024-06-15T10:00:00Z,SELL,BTC,0.5,50000,,,,5,USD,5,Coinbase,def456,Partial sell

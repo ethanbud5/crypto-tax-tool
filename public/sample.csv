@@ -1,0 +1,15 @@
+date_time,transaction_type,sent_asset,sent_amount,sent_asset_price_usd,received_asset,received_amount,received_asset_price_usd,fee_amount,fee_asset,fee_usd,wallet_or_exchange,tx_hash,notes
+2024-01-10T09:00:00Z,BUY,,,,BTC,1.5,42000,,,,Coinbase,0xabc1,Bought BTC
+2024-01-15T14:30:00Z,BUY,,,,ETH,10.0,2300,,,,Coinbase,0xabc2,Bought ETH
+2024-02-20T10:00:00Z,BUY,,,,BTC,0.5,43500,,,,Kraken,0xabc3,More BTC
+2024-03-01T08:00:00Z,STAKING,,,,ETH,0.05,2500,,,,Coinbase,,March staking reward
+2024-04-15T12:00:00Z,TRADE,BTC,0.25,65000,ETH,4.5,3611.11,,,,Coinbase,0xdef1,Swapped BTC for ETH
+2024-05-01T09:00:00Z,STAKING,,,,ETH,0.08,3200,,,,Coinbase,,May staking reward
+2024-06-15T16:00:00Z,SELL,BTC,0.75,67000,,,,,,,Coinbase,0xdef2,Partial BTC sell
+2024-07-01T10:00:00Z,SEND,BTC,0.5,62000,,,,0.0001,BTC,6.20,Coinbase,0xtx1,Transfer to cold wallet
+2024-07-01T10:05:00Z,RECEIVE,,,,BTC,0.4999,62000,,,,ColdWallet,0xtx1,Received from Coinbase
+2024-08-15T11:00:00Z,MINING,,,,BTC,0.001,58000,,,,NiceHash,,Mining payout
+2024-09-01T14:00:00Z,SELL,ETH,5.0,2800,,,,,,,Kraken,0xdef3,Sold half ETH position
+2024-10-01T09:00:00Z,AIRDROP,,,,SOL,50.0,145,,,,Phantom,,Jito airdrop
+2024-11-15T10:00:00Z,SPEND,ETH,1.0,3100,,,,,,,Coinbase,,Bought merchandise with ETH
+2024-12-01T08:00:00Z,GIFT_SENT,ETH,2.0,,,,,,,,Coinbase,,Gift to family member
