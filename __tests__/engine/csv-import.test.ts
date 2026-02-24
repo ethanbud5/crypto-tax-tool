@@ -3,6 +3,15 @@ import path from "path";
 import { importCsv } from "@/engine/csv-import";
 import { TransactionType } from "@/engine/types";
 
+// Mock enrichPrices to pass through CSV unchanged (avoids real API calls)
+jest.mock("@/engine/price-lookup", () => ({
+  enrichPrices: jest.fn(async (csv: string) => ({
+    csvContent: csv,
+    warnings: [],
+    pricesFilled: 0,
+  })),
+}));
+
 const fixturesDir = path.join(__dirname, "..", "fixtures");
 
 function readFixture(name: string): string {
@@ -15,9 +24,9 @@ const CT_HEADER =
 
 describe("importCsv", () => {
   describe("native CSV passthrough", () => {
-    it("should detect native format and parse directly", () => {
+    it("should detect native format and parse directly", async () => {
       const csv = readFixture("simple-buy-sell.csv");
-      const result = importCsv(csv);
+      const result = await importCsv(csv);
 
       expect(result.detectedFormat).toBe("native");
       expect(result.normalizationWarnings).toHaveLength(0);
@@ -27,9 +36,9 @@ describe("importCsv", () => {
   });
 
   describe("CoinTracker CSV normalization", () => {
-    it("should detect CoinTracker format, normalize, and parse", () => {
+    it("should detect CoinTracker format, normalize, and parse", async () => {
       const csv = readFixture("cointracker-buy-sell.csv");
-      const result = importCsv(csv);
+      const result = await importCsv(csv);
 
       expect(result.detectedFormat).toBe("cointracker");
       expect(result.parseResult.transactions).toHaveLength(2);
@@ -42,9 +51,9 @@ describe("importCsv", () => {
   });
 
   describe("unknown format attempts native parse", () => {
-    it("should attempt native parse for unknown formats", () => {
+    it("should attempt native parse for unknown formats", async () => {
       const csv = "id,amount,currency\n1,100,BTC";
-      const result = importCsv(csv);
+      const result = await importCsv(csv);
 
       expect(result.detectedFormat).toBe("unknown");
       // Will fail to parse because columns don't match, but should not throw
@@ -53,14 +62,14 @@ describe("importCsv", () => {
   });
 
   describe("normalization warnings merged into result", () => {
-    it("should merge normalization warnings into parseResult.warnings", () => {
+    it("should merge normalization warnings into parseResult.warnings", async () => {
       // Use an unrecognized type to generate a normalization warning
       const csv =
         CT_HEADER +
         "\n" +
         "3/1/2024 12:00:00,UNKNOWN_TYPE,,15,ETH,,Binance,,,,,,,,,,,,,,,";
 
-      const result = importCsv(csv);
+      const result = await importCsv(csv);
 
       expect(result.detectedFormat).toBe("cointracker");
       expect(result.normalizationWarnings.length).toBeGreaterThan(0);
@@ -74,9 +83,9 @@ describe("importCsv", () => {
   });
 
   describe("mixed CoinTracker fixture", () => {
-    it("should handle a comprehensive mix of transaction types", () => {
+    it("should handle a comprehensive mix of transaction types", async () => {
       const csv = readFixture("cointracker-mixed.csv");
-      const result = importCsv(csv);
+      const result = await importCsv(csv);
 
       expect(result.detectedFormat).toBe("cointracker");
       // 8 rows in CSV, but 2 skipped (USD SEND/RECEIVE) and TRANSFER splits into 2

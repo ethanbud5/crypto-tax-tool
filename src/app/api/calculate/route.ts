@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         : CostBasisMethod.FIFO;
 
     const csvContent = await file.text();
-    const { parseResult, detectedFormat } = importCsv(csvContent);
+    const { parseResult, detectedFormat } = await importCsv(csvContent);
 
     // If there are critical parsing errors and no transactions, fail
     if (parseResult.transactions.length === 0 && parseResult.errors.length > 0) {

@@ -271,6 +271,31 @@ describe("normalizeCoinTracker", () => {
     });
   });
 
+  describe("obfuscated cost basis ('...')", () => {
+    it("should emit a single warning when cost basis values are obfuscated", () => {
+      const csv = ctCsv({
+        Date: "3/15/2024 10:00:00",
+        Type: "STAKING_REWARD",
+        "Received Quantity": "0.126527",
+        "Received Currency": "ADA",
+        "Received Cost Basis (USD)": "...",
+        "Received Wallet": "Coinbase",
+      });
+
+      const result = normalizeCoinTracker(csv);
+      expect(result.warnings).toHaveLength(1);
+      expect(result.warnings[0]).toContain("obfuscated cost basis");
+
+      // The row is still emitted but without a price — csv-parser will flag the missing FMV
+      const parsed = parseCsv(result.csvContent);
+      expect(parsed.transactions).toHaveLength(0); // Rejected by csv-parser due to missing FMV
+      expect(parsed.errors.length).toBeGreaterThan(0);
+      expect(parsed.errors[0].message).toContain(
+        "received_asset_price_usd is required for STAKING",
+      );
+    });
+  });
+
   describe("USD-only RECEIVE: fiat deposit skipped", () => {
     it("should silently skip USD RECEIVE", () => {
       const csv = ctCsv({

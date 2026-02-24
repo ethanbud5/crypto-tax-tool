@@ -42,6 +42,11 @@ function isBlank(value: string | undefined | null): boolean {
   return value === undefined || value === null || value.trim() === "";
 }
 
+function isObfuscated(value: string | undefined | null): boolean {
+  if (isBlank(value)) return false;
+  return value!.trim() === "...";
+}
+
 function parseNum(value: string | undefined | null): number | null {
   if (isBlank(value)) return null;
   const n = Number(value!.trim());
@@ -168,6 +173,21 @@ export function normalizeCoinTracker(csvContent: string): NormalizerResult {
   ];
 
   const rows: string[] = [nativeHeaders.join(",")];
+
+  // Detect obfuscated cost basis ("...") — common in free-tier CoinTracker exports.
+  // Emit a single warning rather than per-row errors from the csv-parser.
+  const hasObfuscatedCostBasis = parsed.data.some(
+    (row) =>
+      isObfuscated(row["Received Cost Basis (USD)"]) ||
+      isObfuscated(row["Sent Cost Basis (USD)"]),
+  );
+  if (hasObfuscatedCostBasis) {
+    warnings.push(
+      'CoinTracker export contains obfuscated cost basis values ("..."). ' +
+        "USD prices cannot be derived — income rows (STAKING, INTEREST) will be missing fair market values. " +
+        "Re-export from CoinTracker with a paid plan, or manually add received_asset_price_usd values to the generated CSV.",
+    );
+  }
 
   for (let i = 0; i < parsed.data.length; i++) {
     const ct = parsed.data[i];

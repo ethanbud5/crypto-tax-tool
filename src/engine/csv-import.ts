@@ -6,6 +6,7 @@ import { ParseResult } from "@/engine/types";
 import { parseCsv } from "@/engine/csv-parser";
 import { detectCsvFormat, CsvFormat } from "@/engine/csv-format-detector";
 import { normalizeCoinTracker } from "@/engine/cointracker-normalizer";
+import { enrichPrices } from "@/engine/price-lookup";
 
 export interface ImportResult {
   parseResult: ParseResult;
@@ -13,7 +14,7 @@ export interface ImportResult {
   normalizationWarnings: string[];
 }
 
-export function importCsv(csvContent: string): ImportResult {
+export async function importCsv(csvContent: string): Promise<ImportResult> {
   const detectedFormat = detectCsvFormat(csvContent);
   let normalizationWarnings: string[] = [];
   let csvToParse = csvContent;
@@ -22,6 +23,11 @@ export function importCsv(csvContent: string): ImportResult {
     const normalized = normalizeCoinTracker(csvContent);
     csvToParse = normalized.csvContent;
     normalizationWarnings = normalized.warnings;
+
+    // Auto-fetch missing USD prices from CryptoCompare
+    const enrichment = await enrichPrices(csvToParse);
+    csvToParse = enrichment.csvContent;
+    normalizationWarnings = [...normalizationWarnings, ...enrichment.warnings];
   }
 
   // For "unknown" format, we still attempt a native parse — parseCsv will
