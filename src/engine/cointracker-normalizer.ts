@@ -1,7 +1,7 @@
 // ─── CoinTracker CSV Normalizer ───────────────────────────────────────────────
-// Converts CoinTracker CSV exports into the native 14-column format expected
-// by csv-parser.ts. Derives USD prices where possible (USD-denominated trades)
-// and emits warnings for rows where prices cannot be derived.
+// Converts CoinTracker CSV exports (22-column real format) into the native
+// 14-column format expected by csv-parser.ts. Uses the explicit Type column
+// and USD cost basis columns from CoinTracker's actual export format.
 
 import Papa from "papaparse";
 import { CSV_HEADERS } from "@/lib/constants";
@@ -13,15 +13,27 @@ interface NormalizerResult {
 
 interface CoinTrackerRow {
   Date: string;
+  Type: string;
+  "Transaction ID": string;
   "Received Quantity": string;
   "Received Currency": string;
+  "Received Cost Basis (USD)": string;
+  "Received Wallet": string;
+  "Received Address": string;
+  "Received Comment": string;
   "Sent Quantity": string;
   "Sent Currency": string;
+  "Sent Cost Basis (USD)": string;
+  "Sent Wallet": string;
+  "Sent Address": string;
+  "Sent Comment": string;
   "Fee Amount": string;
   "Fee Currency": string;
-  Exchange: string;
-  "Trade-Group": string;
-  Comment: string;
+  "Fee Cost Basis (USD)": string;
+  "Realized Return (USD)": string;
+  "Fee Realized Return (USD)": string;
+  "Transaction Hash": string;
+  "Block Explorer URL": string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -37,13 +49,12 @@ function parseNum(value: string | undefined | null): number | null {
 }
 
 /**
- * Convert CoinTracker date format (MM/DD/YYYY HH:MM:SS) to ISO-like format
+ * Convert CoinTracker date format (M/D/YYYY H:MM:SS) to ISO-like format
  * (YYYY-MM-DDThh:mm:ss). Intentionally omits timezone suffix so the existing
  * csv-parser will emit its standard "no timezone info" warning.
  */
 function convertDate(ctDate: string): string | null {
   const trimmed = ctDate.trim();
-  // Match MM/DD/YYYY HH:MM:SS
   const match = trimmed.match(
     /^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2}):(\d{2})$/,
   );
@@ -57,18 +68,40 @@ function convertDate(ctDate: string): string | null {
   return `${year}-${mm}-${dd}T${hh}:${minutes}:${seconds}`;
 }
 
-const INCOME_COMMENTS: Record<string, string> = {
-  "staking reward": "STAKING",
-  staking: "STAKING",
-  "mining reward": "MINING",
-  mining: "MINING",
-  airdrop: "AIRDROP",
-  fork: "FORK",
+function escapeField(field: string): string {
+  if (field.includes(",") || field.includes('"') || field.includes("\n")) {
+    return `"${field.replace(/"/g, '""')}"`;
+  }
+  return field;
+}
+
+function combineNotes(
+  receivedComment: string | undefined,
+  sentComment: string | undefined,
+): string {
+  const r = receivedComment?.trim() || "";
+  const s = sentComment?.trim() || "";
+  if (r && s) return `${r}; ${s}`;
+  return r || s;
+}
+
+// ─── Type Mapping ─────────────────────────────────────────────────────────────
+
+const TYPE_MAP: Record<string, string> = {
+  BUY: "BUY",
+  SELL: "SELL",
+  TRADE: "TRADE",
+  STAKING_REWARD: "STAKING",
+  INTEREST_PAYMENT: "STAKING",
+  RECEIVE: "RECEIVE",
+  SEND: "SEND",
+  // TRANSFER is handled separately (emits two rows)
 };
 
-// ─── Row Classification ──────────────────────────────────────────────────────
+// ─── Native Row Builder ──────────────────────────────────────────────────────
 
-interface ClassifiedRow {
+interface NativeRowFields {
+  dateStr: string;
   type: string;
   sentAsset: string;
   sentAmount: string;
@@ -80,108 +113,27 @@ interface ClassifiedRow {
   feeAsset: string;
   feeUsd: string;
   wallet: string;
+  txHash: string;
   notes: string;
-  warning?: string;
 }
 
-function classifyRow(row: CoinTrackerRow, rowNum: number): ClassifiedRow {
-  const receivedQty = parseNum(row["Received Quantity"]);
-  const receivedCur = row["Received Currency"]?.trim() || "";
-  const sentQty = parseNum(row["Sent Quantity"]);
-  const sentCur = row["Sent Currency"]?.trim() || "";
-  const feeQty = parseNum(row["Fee Amount"]);
-  const feeCur = row["Fee Currency"]?.trim() || "";
-  const exchange = row["Exchange"]?.trim() || "Unknown";
-  const comment = row["Comment"]?.trim() || "";
-  const commentLower = comment.toLowerCase();
-
-  const hasReceived = receivedQty !== null && receivedCur !== "";
-  const hasSent = sentQty !== null && sentCur !== "";
-
-  let type = "";
-  let sentPriceUsd = "";
-  let receivedPriceUsd = "";
-  let warning: string | undefined;
-
-  // Fee USD: only derivable if fee is in USD
-  const feeUsd =
-    feeQty !== null && feeCur.toUpperCase() === "USD"
-      ? String(feeQty)
-      : "";
-
-  if (hasSent && hasReceived) {
-    // Both sides present — determine if it's a fiat buy/sell or crypto trade
-    const sentIsUsd = sentCur.toUpperCase() === "USD";
-    const receivedIsUsd = receivedCur.toUpperCase() === "USD";
-
-    if (sentIsUsd && !receivedIsUsd) {
-      // USD sent, crypto received → BUY
-      type = "BUY";
-      receivedPriceUsd = String(sentQty! / receivedQty!);
-    } else if (!sentIsUsd && receivedIsUsd) {
-      // Crypto sent, USD received → SELL
-      type = "SELL";
-      sentPriceUsd = String(receivedQty! / sentQty!);
-    } else if (!sentIsUsd && !receivedIsUsd) {
-      // Crypto to crypto → TRADE
-      type = "TRADE";
-      warning = `Row ${rowNum}: Crypto-to-crypto trade (${sentCur} → ${receivedCur}) — USD prices not available. Cost basis will default to $0.`;
-    } else {
-      // USD to USD — unusual, treat as TRADE with warning
-      type = "TRADE";
-      warning = `Row ${rowNum}: USD-to-USD transaction — treated as TRADE.`;
-    }
-  } else if (hasReceived && !hasSent) {
-    // Only received — could be income or a buy (deposit)
-    const incomeType = INCOME_COMMENTS[commentLower];
-    if (incomeType) {
-      type = incomeType;
-      // Income types require received_asset_price_usd which we can't derive
-      // csv-parser will emit an error for missing FMV — this is correct behavior
-    } else {
-      // No income tag — treat as BUY (deposit/transfer in)
-      type = "BUY";
-    }
-  } else if (hasSent && !hasReceived) {
-    // Only sent — could be a transfer or sell
-    if (commentLower === "transfer" || commentLower === "withdrawal") {
-      type = "SEND";
-    } else {
-      type = "SELL";
-      warning = `Row ${rowNum}: Sent-only transaction (${sentCur}) with no received side — treated as SELL. USD price not available.`;
-    }
-  } else {
-    // Neither side — skip with warning
-    type = "BUY"; // fallback
-    warning = `Row ${rowNum}: No sent or received amounts found — row may be invalid.`;
-  }
-
-  // Handle non-USD fiat
-  if (hasSent && hasReceived) {
-    const NON_USD_FIAT = new Set(["EUR", "GBP", "CAD", "AUD", "JPY", "CHF"]);
-    if (NON_USD_FIAT.has(sentCur.toUpperCase()) && receivedPriceUsd === "") {
-      warning = `Row ${rowNum}: Non-USD fiat (${sentCur}) — cannot derive USD price. You may need to add prices manually.`;
-    }
-    if (NON_USD_FIAT.has(receivedCur.toUpperCase()) && sentPriceUsd === "") {
-      warning = `Row ${rowNum}: Non-USD fiat (${receivedCur}) — cannot derive USD price. You may need to add prices manually.`;
-    }
-  }
-
-  return {
-    type,
-    sentAsset: hasSent ? sentCur : "",
-    sentAmount: hasSent ? String(sentQty) : "",
-    sentPriceUsd,
-    receivedAsset: hasReceived ? receivedCur : "",
-    receivedAmount: hasReceived ? String(receivedQty) : "",
-    receivedPriceUsd,
-    feeAmount: feeQty !== null ? String(feeQty) : "",
-    feeAsset: feeCur,
-    feeUsd,
-    wallet: exchange,
-    notes: comment,
-    warning,
-  };
+function buildNativeRow(fields: NativeRowFields): string {
+  return [
+    fields.dateStr,
+    fields.type,
+    fields.sentAsset,
+    fields.sentAmount,
+    fields.sentPriceUsd,
+    fields.receivedAsset,
+    fields.receivedAmount,
+    fields.receivedPriceUsd,
+    fields.feeAmount,
+    fields.feeAsset,
+    fields.feeUsd,
+    escapeField(fields.wallet),
+    fields.txHash,
+    escapeField(fields.notes),
+  ].join(",");
 }
 
 // ─── Main Normalizer ─────────────────────────────────────────────────────────
@@ -198,7 +150,6 @@ export function normalizeCoinTracker(csvContent: string): NormalizerResult {
     return { csvContent: "", warnings };
   }
 
-  // Build native CSV header
   const nativeHeaders = [
     CSV_HEADERS.DATE_TIME,
     CSV_HEADERS.TRANSACTION_TYPE,
@@ -219,45 +170,161 @@ export function normalizeCoinTracker(csvContent: string): NormalizerResult {
   const rows: string[] = [nativeHeaders.join(",")];
 
   for (let i = 0; i < parsed.data.length; i++) {
-    const ctRow = parsed.data[i];
+    const ct = parsed.data[i];
     const rowNum = i + 2; // 1-indexed, accounting for header
 
     // Convert date
-    const dateStr = convertDate(ctRow.Date);
+    const dateStr = convertDate(ct.Date);
     if (dateStr === null) {
       warnings.push(
-        `Row ${rowNum}: Could not parse date "${ctRow.Date}" — row skipped.`,
+        `Row ${rowNum}: Could not parse date "${ct.Date}" — row skipped.`,
       );
       continue;
     }
 
-    const classified = classifyRow(ctRow, rowNum);
-    if (classified.warning) {
-      warnings.push(classified.warning);
+    const ctType = ct.Type?.trim().toUpperCase() || "";
+    const receivedQty = parseNum(ct["Received Quantity"]);
+    const receivedCur = ct["Received Currency"]?.trim() || "";
+    const receivedCostBasis = parseNum(ct["Received Cost Basis (USD)"]);
+    const sentQty = parseNum(ct["Sent Quantity"]);
+    const sentCur = ct["Sent Currency"]?.trim() || "";
+    const feeQty = parseNum(ct["Fee Amount"]);
+    const feeCur = ct["Fee Currency"]?.trim() || "";
+    const feeCostBasis = parseNum(ct["Fee Cost Basis (USD)"]);
+    const receivedWallet = ct["Received Wallet"]?.trim() || "";
+    const sentWallet = ct["Sent Wallet"]?.trim() || "";
+    const txHash = ct["Transaction Hash"]?.trim() || "";
+    const notes = combineNotes(ct["Received Comment"], ct["Sent Comment"]);
+
+    // Common fee fields
+    const feeAmount = feeQty !== null ? String(feeQty) : "";
+    const feeAsset = feeCur;
+    const feeUsd = feeCostBasis !== null ? String(feeCostBasis) : "";
+
+    // ── Skip USD-only SEND/RECEIVE (fiat deposits/withdrawals) ──
+    if (ctType === "RECEIVE" && receivedCur.toUpperCase() === "USD") continue;
+    if (ctType === "SEND" && sentCur.toUpperCase() === "USD") continue;
+
+    // ── TRANSFER → emit SEND + RECEIVE pair ──
+    if (ctType === "TRANSFER") {
+      // SEND side — from Sent Wallet, carries the fee
+      rows.push(
+        buildNativeRow({
+          dateStr,
+          type: "SEND",
+          sentAsset: sentCur,
+          sentAmount: sentQty !== null ? String(sentQty) : "",
+          sentPriceUsd: "",
+          receivedAsset: "",
+          receivedAmount: "",
+          receivedPriceUsd: "",
+          feeAmount,
+          feeAsset,
+          feeUsd,
+          wallet: sentWallet || receivedWallet || "Unknown",
+          txHash,
+          notes,
+        }),
+      );
+
+      // RECEIVE side — at Received Wallet, with cost basis for lot tracking
+      const recvPriceUsd =
+        receivedCostBasis !== null && receivedQty !== null
+          ? String(receivedCostBasis / receivedQty)
+          : "";
+      rows.push(
+        buildNativeRow({
+          dateStr,
+          type: "RECEIVE",
+          sentAsset: "",
+          sentAmount: "",
+          sentPriceUsd: "",
+          receivedAsset: receivedCur,
+          receivedAmount: receivedQty !== null ? String(receivedQty) : "",
+          receivedPriceUsd: recvPriceUsd,
+          feeAmount: "",
+          feeAsset: "",
+          feeUsd: "",
+          wallet: receivedWallet || sentWallet || "Unknown",
+          txHash,
+          notes,
+        }),
+      );
+      continue;
     }
 
-    // Escape fields that might contain commas
-    const escapeField = (field: string) =>
-      field.includes(",") ? `"${field}"` : field;
+    // ── Map type ──
+    const nativeType = TYPE_MAP[ctType];
+    if (!nativeType) {
+      warnings.push(
+        `Row ${rowNum}: Unrecognized CoinTracker type "${ct.Type}" — row skipped.`,
+      );
+      continue;
+    }
 
-    const nativeRow = [
-      dateStr,
-      classified.type,
-      classified.sentAsset,
-      classified.sentAmount,
-      classified.sentPriceUsd,
-      classified.receivedAsset,
-      classified.receivedAmount,
-      classified.receivedPriceUsd,
-      classified.feeAmount,
-      classified.feeAsset,
-      classified.feeUsd,
-      classified.wallet,
-      "", // tx_hash — CoinTracker doesn't provide this
-      escapeField(classified.notes),
-    ].join(",");
+    // ── Derive USD prices (only for the sides relevant to each type) ──
+    let receivedPriceUsd = "";
+    let sentPriceUsd = "";
 
-    rows.push(nativeRow);
+    switch (nativeType) {
+      case "BUY":
+      case "STAKING":
+      case "RECEIVE":
+        if (receivedCostBasis !== null && receivedQty !== null) {
+          receivedPriceUsd = String(receivedCostBasis / receivedQty);
+        }
+        break;
+      case "SELL":
+        if (receivedCostBasis !== null && sentQty !== null) {
+          sentPriceUsd = String(receivedCostBasis / sentQty);
+        }
+        break;
+      case "TRADE":
+        if (receivedCostBasis !== null && receivedQty !== null) {
+          receivedPriceUsd = String(receivedCostBasis / receivedQty);
+        }
+        if (receivedCostBasis !== null && sentQty !== null) {
+          sentPriceUsd = String(receivedCostBasis / sentQty);
+        }
+        break;
+      // SEND: no prices needed
+    }
+
+    // ── Select wallet ──
+    let wallet: string;
+    switch (nativeType) {
+      case "BUY":
+      case "RECEIVE":
+      case "STAKING":
+        wallet = receivedWallet || sentWallet || "Unknown";
+        break;
+      case "SELL":
+      case "SEND":
+      case "TRADE":
+        wallet = sentWallet || receivedWallet || "Unknown";
+        break;
+      default:
+        wallet = receivedWallet || sentWallet || "Unknown";
+    }
+
+    rows.push(
+      buildNativeRow({
+        dateStr,
+        type: nativeType,
+        sentAsset: sentQty !== null ? sentCur : "",
+        sentAmount: sentQty !== null ? String(sentQty) : "",
+        sentPriceUsd,
+        receivedAsset: receivedQty !== null ? receivedCur : "",
+        receivedAmount: receivedQty !== null ? String(receivedQty) : "",
+        receivedPriceUsd,
+        feeAmount,
+        feeAsset,
+        feeUsd,
+        wallet,
+        txHash,
+        notes,
+      }),
+    );
   }
 
   return { csvContent: rows.join("\n"), warnings };

@@ -1,8 +1,9 @@
-Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
-01/15/2024 10:00:00,1.0,BTC,30000,USD,10,USD,Coinbase,,First BTC purchase
-03/01/2024 12:00:00,15,ETH,0.5,BTC,,,Binance,,
-04/01/2024 08:00:00,0.05,ETH,,,,,Kraken,,staking reward
-05/01/2024 09:00:00,100,SOL,,,,,Phantom,,airdrop
-06/15/2024 14:00:00,50000,USD,1.0,ETH,5,USD,Coinbase,,
-07/01/2024 10:00:00,,,0.01,BTC,,,Coinbase,,transfer
-08/01/2024 12:00:00,,,500,SOL,0.1,SOL,Coinbase,,
+Date,Type,Transaction ID,Received Quantity,Received Currency,Received Cost Basis (USD),Received Wallet,Received Address,Received Comment,Sent Quantity,Sent Currency,Sent Cost Basis (USD),Sent Wallet,Sent Address,Sent Comment,Fee Amount,Fee Currency,Fee Cost Basis (USD),Realized Return (USD),Fee Realized Return (USD),Transaction Hash,Block Explorer URL
+1/15/2024 10:00:00,BUY,,1.0,BTC,30000,Coinbase,,First BTC purchase,30000,USD,,Coinbase,,,10,USD,10,,,,
+3/1/2024 12:00:00,SELL,,1724.08,USD,1724.08,Coinbase,,,0.51265754,ETH,1200,Coinbase,,,,,,,,,
+4/1/2024 8:00:00,TRADE,,0.00000402,BTC,0.41,Binance,,,0.374015,ADA,,Binance,,,,,,,,trade123,
+5/1/2024 9:00:00,TRANSFER,,0.0161652,BTC,1500,River,,,0.0161652,BTC,,Coinbase,,,0.0001,BTC,9.5,,,,
+6/1/2024 10:00:00,STAKING_REWARD,,0.126527,ADA,0.08,Coinbase,,Staking reward,,,,,,,,,,,,stk456,
+6/15/2024 12:00:00,RECEIVE,,1500,USD,,Coinbase Cash,,,,,,,,,,,,,,,
+7/1/2024 12:00:00,SEND,,,,,,,,500,USD,,Coinbase Cash,,,,,,,,,
+8/1/2024 8:00:00,INTEREST_PAYMENT,,0.00024864,BTC,25.50,River,,BTC interest,,,,,,,,,,,,int789,

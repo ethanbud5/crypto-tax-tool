@@ -10,8 +10,8 @@ describe("detectCsvFormat", () => {
 
   it("should detect CoinTracker format headers", () => {
     const csv =
-      "Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment\n" +
-      "01/15/2024 10:00:00,1.0,BTC,30000,USD,10,USD,Coinbase,,";
+      "Date,Type,Transaction ID,Received Quantity,Received Currency,Received Cost Basis (USD),Received Wallet,Received Address,Received Comment,Sent Quantity,Sent Currency,Sent Cost Basis (USD),Sent Wallet,Sent Address,Sent Comment,Fee Amount,Fee Currency,Fee Cost Basis (USD),Realized Return (USD),Fee Realized Return (USD),Transaction Hash,Block Explorer URL\n" +
+      "1/15/2024 10:00:00,BUY,,1.0,BTC,30000,Coinbase,,,30000,USD,,Coinbase,,,10,USD,10,,,,";
     expect(detectCsvFormat(csv)).toBe("cointracker");
   });
 
@@ -36,13 +36,13 @@ describe("detectCsvFormat", () => {
 
   it("should handle extra columns beyond the required set for CoinTracker", () => {
     const csv =
-      "Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Extra Field\ndata";
+      "Date,Type,Received Quantity,Received Currency,Received Cost Basis (USD),Sent Quantity,Sent Currency,Extra Field\ndata";
     expect(detectCsvFormat(csv)).toBe("cointracker");
   });
 
   it("should handle headers with extra whitespace", () => {
     const csv =
-      " Date , Received Quantity , Received Currency , Sent Quantity , Sent Currency , Fee Amount , Fee Currency \ndata";
+      " Date , Type , Received Quantity , Received Currency , Received Cost Basis (USD) , Sent Quantity , Sent Currency \ndata";
     expect(detectCsvFormat(csv)).toBe("cointracker");
   });
 

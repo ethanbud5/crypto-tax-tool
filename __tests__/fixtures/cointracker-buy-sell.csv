@@ -1,3 +1,3 @@
-Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
-01/15/2024 10:00:00,1.0,BTC,30000,USD,10,USD,Coinbase,,First BTC purchase
-06/15/2024 14:00:00,25000,USD,0.5,BTC,5,USD,Coinbase,,Partial sell
+Date,Type,Transaction ID,Received Quantity,Received Currency,Received Cost Basis (USD),Received Wallet,Received Address,Received Comment,Sent Quantity,Sent Currency,Sent Cost Basis (USD),Sent Wallet,Sent Address,Sent Comment,Fee Amount,Fee Currency,Fee Cost Basis (USD),Realized Return (USD),Fee Realized Return (USD),Transaction Hash,Block Explorer URL
+1/15/2024 10:00:00,BUY,,1.0,BTC,30000,Coinbase,,,30000,USD,,Coinbase,,,10,USD,10,,,,
+6/15/2024 14:00:00,SELL,,25000,USD,25000,Coinbase,,,0.5,BTC,15000,Coinbase,,,5,USD,5,10000,,,

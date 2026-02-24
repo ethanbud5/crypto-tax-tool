@@ -9,6 +9,10 @@ function readFixture(name: string): string {
   return fs.readFileSync(path.join(fixturesDir, name), "utf-8");
 }
 
+// 22-column CoinTracker header for inline CSV tests
+const CT_HEADER =
+  "Date,Type,Transaction ID,Received Quantity,Received Currency,Received Cost Basis (USD),Received Wallet,Received Address,Received Comment,Sent Quantity,Sent Currency,Sent Cost Basis (USD),Sent Wallet,Sent Address,Sent Comment,Fee Amount,Fee Currency,Fee Cost Basis (USD),Realized Return (USD),Fee Realized Return (USD),Transaction Hash,Block Explorer URL";
+
 describe("importCsv", () => {
   describe("native CSV passthrough", () => {
     it("should detect native format and parse directly", () => {
@@ -50,9 +54,11 @@ describe("importCsv", () => {
 
   describe("normalization warnings merged into result", () => {
     it("should merge normalization warnings into parseResult.warnings", () => {
+      // Use an unrecognized type to generate a normalization warning
       const csv =
-        "Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment\n" +
-        "03/01/2024 12:00:00,15,ETH,0.5,BTC,,,Binance,,";
+        CT_HEADER +
+        "\n" +
+        "3/1/2024 12:00:00,UNKNOWN_TYPE,,15,ETH,,Binance,,,,,,,,,,,,,,,";
 
       const result = importCsv(csv);
 
@@ -61,7 +67,7 @@ describe("importCsv", () => {
       // Normalization warnings should also appear in parseResult.warnings
       expect(
         result.parseResult.warnings.some((w) =>
-          w.message.includes("Crypto-to-crypto"),
+          w.message.includes("Unrecognized CoinTracker type"),
         ),
       ).toBe(true);
     });
@@ -73,8 +79,10 @@ describe("importCsv", () => {
       const result = importCsv(csv);
 
       expect(result.detectedFormat).toBe("cointracker");
-      // Should have some successful transactions and some errors (staking/airdrop missing FMV)
-      expect(result.parseResult.transactions.length).toBeGreaterThan(0);
+      // 8 rows in CSV, but 2 skipped (USD SEND/RECEIVE) and TRANSFER splits into 2
+      // = 1 BUY + 1 SELL + 1 TRADE + 2 (TRANSFER→SEND+RECEIVE) + 1 STAKING + 1 STAKING = 7
+      expect(result.parseResult.transactions).toHaveLength(7);
+      expect(result.parseResult.errors).toHaveLength(0);
     });
   });
 });

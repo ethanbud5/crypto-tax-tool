@@ -1,4 +1,4 @@
-Date,Received Quantity,Received Currency,Sent Quantity,Sent Currency,Fee Amount,Fee Currency,Exchange,Trade-Group,Comment
-01/15/2024 10:00:00,10.0,ETH,25000,USD,,,Kraken,,
-03/15/2024 10:00:00,0.1,ETH,,,,,Kraken,,staking reward
-06/15/2024 10:00:00,0.15,ETH,,,,,Kraken,,staking reward
+Date,Type,Transaction ID,Received Quantity,Received Currency,Received Cost Basis (USD),Received Wallet,Received Address,Received Comment,Sent Quantity,Sent Currency,Sent Cost Basis (USD),Sent Wallet,Sent Address,Sent Comment,Fee Amount,Fee Currency,Fee Cost Basis (USD),Realized Return (USD),Fee Realized Return (USD),Transaction Hash,Block Explorer URL
+1/15/2024 10:00:00,BUY,,10.0,ETH,25000,Kraken,,,25000,USD,,Kraken,,,,,,,,,
+3/15/2024 10:00:00,STAKING_REWARD,,0.1,ETH,250,Kraken,,Staking reward,,,,,,,,,,,,,
+6/15/2024 10:00:00,INTEREST_PAYMENT,,0.05,ETH,150,Kraken,,Interest payment,,,,,,,,,,,,,

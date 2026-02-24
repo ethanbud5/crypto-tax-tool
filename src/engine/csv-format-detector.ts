@@ -13,12 +13,12 @@ const NATIVE_REQUIRED_HEADERS = [
 
 const COINTRACKER_REQUIRED_HEADERS = [
   "Date",
+  "Type",
   "Received Quantity",
   "Received Currency",
+  "Received Cost Basis (USD)",
   "Sent Quantity",
   "Sent Currency",
-  "Fee Amount",
-  "Fee Currency",
 ];
 
 export function detectCsvFormat(csvContent: string): CsvFormat {
