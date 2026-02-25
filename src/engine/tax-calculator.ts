@@ -69,7 +69,13 @@ export function calculateTaxes(
         case TransactionType.GIFT_RECEIVED: {
           const asset = tx.receivedAsset!;
           const amount = tx.receivedAmount!;
-          const priceUsd = tx.receivedAssetPriceUsd ?? new Decimal(0);
+
+          // Prefer actual USD spent over enriched daily close price.
+          // sentAmount/receivedAmount gives the real execution price.
+          const priceUsd =
+            tx.sentAsset?.toUpperCase() === "USD" && tx.sentAmount
+              ? tx.sentAmount.div(amount)
+              : (tx.receivedAssetPriceUsd ?? new Decimal(0));
 
           lotPool.addLot({
             id: lotPool.generateLotId(),
@@ -124,8 +130,14 @@ export function calculateTaxes(
         case TransactionType.SELL: {
           const asset = tx.sentAsset!;
           const amount = tx.sentAmount!;
-          const priceUsd = tx.sentAssetPriceUsd ?? new Decimal(0);
-          const proceeds = amount.mul(priceUsd);
+
+          // Prefer actual USD received over computed amount × price.
+          // The daily close price is only an approximation; the real
+          // execution price (USD received) is authoritative.
+          const proceeds =
+            tx.receivedAsset?.toUpperCase() === "USD" && tx.receivedAmount
+              ? tx.receivedAmount
+              : amount.mul(tx.sentAssetPriceUsd ?? new Decimal(0));
 
           const results = processDisposal(
             lotPool,

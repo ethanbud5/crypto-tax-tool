@@ -291,6 +291,56 @@ describe("calculateTaxes", () => {
     expect(result.disposals[0].gainOrLoss.toNumber()).toBe(20000);
   });
 
+  it("SELL with USD received uses actual USD amount as proceeds", () => {
+    const transactions: Transaction[] = [
+      tx({
+        dateTime: new Date("2024-01-01T00:00:00Z"),
+        type: TransactionType.BUY,
+        receivedAsset: "ETH",
+        receivedAmount: new Decimal("0.83288708"),
+        receivedAssetPriceUsd: new Decimal(1295),
+        wallet: "Coinbase",
+      }),
+      tx({
+        dateTime: new Date("2024-06-01T00:00:00Z"),
+        type: TransactionType.SELL,
+        sentAsset: "ETH",
+        sentAmount: new Decimal("0.5"),
+        sentAssetPriceUsd: new Decimal(3280), // daily close (approximation)
+        receivedAsset: "USD",
+        receivedAmount: new Decimal("1724.08"), // actual USD received
+        wallet: "Coinbase",
+      }),
+    ];
+
+    const result = calculateTaxes(transactions, CostBasisMethod.FIFO);
+
+    expect(result.disposals).toHaveLength(1);
+    // Proceeds should be the actual USD received, not 0.5 * 3280 = 1640
+    expect(result.disposals[0].proceeds.toNumber()).toBe(1724.08);
+  });
+
+  it("BUY with USD sent uses actual USD amount for cost basis", () => {
+    const transactions: Transaction[] = [
+      tx({
+        dateTime: new Date("2024-01-01T00:00:00Z"),
+        type: TransactionType.BUY,
+        receivedAsset: "BTC",
+        receivedAmount: new Decimal("0.02"),
+        receivedAssetPriceUsd: new Decimal(95000), // daily close (approximation)
+        sentAsset: "USD",
+        sentAmount: new Decimal("2069.54"), // actual USD spent
+        wallet: "Coinbase",
+      }),
+    ];
+
+    const result = calculateTaxes(transactions, CostBasisMethod.FIFO);
+
+    // Cost basis per unit should be 2069.54 / 0.02 = 103477, not 95000
+    const lot = result.remainingLots[0];
+    expect(lot.costBasisPerUnit.toNumber()).toBeCloseTo(103477, 0);
+  });
+
   it("insufficient lots produces an error, not a crash", () => {
     const transactions: Transaction[] = [
       tx({
