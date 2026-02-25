@@ -216,10 +216,15 @@ export function normalizeCoinTracker(csvContent: string): NormalizerResult {
     const txHash = ct["Transaction Hash"]?.trim() || "";
     const notes = combineNotes(ct["Received Comment"], ct["Sent Comment"]);
 
-    // Common fee fields
+    // Common fee fields — when fee is in USD, the amount IS the USD value
     const feeAmount = feeQty !== null ? String(feeQty) : "";
     const feeAsset = feeCur;
-    const feeUsd = feeCostBasis !== null ? String(feeCostBasis) : "";
+    const feeUsd =
+      feeCur.toUpperCase() === "USD" && feeQty !== null
+        ? String(feeQty)
+        : feeCostBasis !== null
+          ? String(feeCostBasis)
+          : "";
 
     // ── Skip USD-only SEND/RECEIVE (fiat deposits/withdrawals) ──
     if (ctType === "RECEIVE" && receivedCur.toUpperCase() === "USD") continue;
