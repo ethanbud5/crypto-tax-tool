@@ -353,7 +353,7 @@ describe("normalizeCoinTracker", () => {
   });
 
   describe("date conversion", () => {
-    it("should convert M/D/YYYY H:MM:SS to YYYY-MM-DDThh:mm:ss", () => {
+    it("should convert M/D/YYYY H:MM:SS to YYYY-MM-DDThh:mm:ssZ", () => {
       const csv = ctCsv({
         Date: "1/15/2024 10:00:00",
         Type: "BUY",
@@ -366,7 +366,7 @@ describe("normalizeCoinTracker", () => {
       });
 
       const result = normalizeCoinTracker(csv);
-      expect(result.csvContent).toContain("2024-01-15T10:00:00");
+      expect(result.csvContent).toContain("2024-01-15T10:00:00Z");
     });
 
     it("should handle variable-width date fields (no zero-padding)", () => {
@@ -382,7 +382,7 @@ describe("normalizeCoinTracker", () => {
       });
 
       const result = normalizeCoinTracker(csv);
-      expect(result.csvContent).toContain("2025-12-02T07:17:08");
+      expect(result.csvContent).toContain("2025-12-02T07:17:08Z");
     });
 
     it("should emit a warning for unparseable dates", () => {

@@ -158,6 +158,19 @@ export async function enrichPrices(
     ) {
       tickersNeeded.add(sentAsset.toUpperCase());
     }
+
+    const feeAsset = row[CSV_HEADERS.FEE_ASSET]?.trim() ?? "";
+    const feeAmount = row[CSV_HEADERS.FEE_AMOUNT]?.trim() ?? "";
+    const feeUsd = row[CSV_HEADERS.FEE_USD]?.trim() ?? "";
+
+    if (
+      feeAsset &&
+      feeAsset.toUpperCase() !== "USD" &&
+      feeAmount &&
+      !feeUsd
+    ) {
+      tickersNeeded.add(feeAsset.toUpperCase());
+    }
   }
 
   // Short-circuit: nothing to do
@@ -230,6 +243,24 @@ export async function enrichPrices(
       const price = lookupPrice(cache, sentAsset.toUpperCase(), dateStr);
       if (price !== null) {
         row[CSV_HEADERS.SENT_ASSET_PRICE_USD] = String(price);
+        pricesFilled++;
+      }
+    }
+
+    // Fee side — fee_usd is a total (amount × price), not per-unit
+    const feeAsset = row[CSV_HEADERS.FEE_ASSET]?.trim() ?? "";
+    const feeAmount = row[CSV_HEADERS.FEE_AMOUNT]?.trim() ?? "";
+    const feeUsd = row[CSV_HEADERS.FEE_USD]?.trim() ?? "";
+
+    if (
+      feeAsset &&
+      feeAsset.toUpperCase() !== "USD" &&
+      feeAmount &&
+      !feeUsd
+    ) {
+      const price = lookupPrice(cache, feeAsset.toUpperCase(), dateStr);
+      if (price !== null) {
+        row[CSV_HEADERS.FEE_USD] = String(parseFloat(feeAmount) * price);
         pricesFilled++;
       }
     }

@@ -53,6 +53,7 @@ describe("processDisposal", () => {
     );
 
     expect(results).toHaveLength(1);
+    expect(results[0].amount.toNumber()).toBe(1);
     expect(results[0].costBasis.toNumber()).toBe(30000);
     expect(results[0].proceeds.toNumber()).toBe(50000);
     expect(results[0].gainOrLoss.toNumber()).toBe(20000);
@@ -121,6 +122,7 @@ describe("processDisposal", () => {
     );
 
     expect(results).toHaveLength(1);
+    expect(results[0].amount.toNumber()).toBe(0.5);
     expect(results[0].costBasis.toNumber()).toBe(15000); // 0.5 * $30k
     expect(results[0].gainOrLoss.toNumber()).toBe(10000); // $25k - $15k
 

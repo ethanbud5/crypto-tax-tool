@@ -62,6 +62,7 @@ export interface TaxLot {
 
 export interface DisposalResult {
   asset: string;
+  amount: Decimal;
   disposalDate: Date;
   disposalType: TransactionType;
   proceeds: Decimal;

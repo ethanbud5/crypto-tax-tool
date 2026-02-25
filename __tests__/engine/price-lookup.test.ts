@@ -287,6 +287,62 @@ describe("enrichPrices", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
+  it("should fill missing fee_usd when fee_asset is crypto", async () => {
+    // SEND with BTC fee, no fee_usd
+    const csv =
+      NATIVE_HEADER +
+      "\n" +
+      "2024-03-15T10:00:00,SEND,BTC,0.5,,,,,0.0001,BTC,,Coinbase,,";
+
+    mockFetch.mockResolvedValueOnce(
+      makeCCResponse([{ time: 1710460800, close: 65000 }]),
+    );
+
+    const result = await enrichPrices(csv);
+
+    expect(result.pricesFilled).toBeGreaterThanOrEqual(1);
+    // fee_usd should be 0.0001 * 65000 = 6.5
+    expect(result.csvContent).toContain("6.5");
+  });
+
+  it("should compute fee_usd as amount × price (not just price)", async () => {
+    // Fee of 0.001 ETH — fee_usd should be 0.001 * 4000 = 4, not 4000
+    const csv =
+      NATIVE_HEADER +
+      "\n" +
+      "2024-03-15T10:00:00,SEND,ETH,1.0,,,,,0.001,ETH,,MetaMask,,";
+
+    mockFetch.mockResolvedValueOnce(
+      makeCCResponse([{ time: 1710460800, close: 4000 }]),
+    );
+
+    const result = await enrichPrices(csv);
+
+    // Parse the CSV to check the fee_usd field specifically
+    const lines = result.csvContent.split("\n");
+    const headers = lines[0].split(",");
+    const values = lines[1].split(",");
+    const feeUsdIdx = headers.indexOf("fee_usd");
+    expect(parseFloat(values[feeUsdIdx])).toBeCloseTo(4, 5);
+  });
+
+  it("should skip fee enrichment when fee_asset is USD", async () => {
+    const csv =
+      NATIVE_HEADER +
+      "\n" +
+      "2024-03-15T10:00:00,BUY,,,,BTC,1.0,,10,USD,,Coinbase,,";
+
+    // BTC price needed for received side
+    mockFetch.mockResolvedValueOnce(
+      makeCCResponse([{ time: 1710460800, close: 65000 }]),
+    );
+
+    const result = await enrichPrices(csv);
+
+    // Only 1 price filled (received side), not the fee
+    expect(result.pricesFilled).toBe(1);
+  });
+
   it("should deduplicate tickers — one API call per unique ticker", async () => {
     const csv =
       NATIVE_HEADER +

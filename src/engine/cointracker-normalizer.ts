@@ -54,9 +54,9 @@ function parseNum(value: string | undefined | null): number | null {
 }
 
 /**
- * Convert CoinTracker date format (M/D/YYYY H:MM:SS) to ISO-like format
- * (YYYY-MM-DDThh:mm:ss). Intentionally omits timezone suffix so the existing
- * csv-parser will emit its standard "no timezone info" warning.
+ * Convert CoinTracker date format (M/D/YYYY H:MM:SS) to ISO 8601 UTC format
+ * (YYYY-MM-DDThh:mm:ssZ). CoinTracker doesn't specify timezone; treating as
+ * UTC is the standard assumption.
  */
 function convertDate(ctDate: string): string | null {
   const trimmed = ctDate.trim();
@@ -70,7 +70,7 @@ function convertDate(ctDate: string): string | null {
   const dd = day.padStart(2, "0");
   const hh = hours.padStart(2, "0");
 
-  return `${year}-${mm}-${dd}T${hh}:${minutes}:${seconds}`;
+  return `${year}-${mm}-${dd}T${hh}:${minutes}:${seconds}Z`;
 }
 
 function escapeField(field: string): string {

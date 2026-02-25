@@ -17,17 +17,8 @@ import { formatCryptoAmount } from "@/lib/format";
  * The description shows the disposed amount and asset (e.g., "1.5 BTC").
  */
 function disposalToForm8949Row(d: DisposalResult): Form8949Row {
-  // Derive the quantity disposed: costBasis / costBasisPerUnit isn't available,
-  // but we can compute it from proceeds / price or just use the amount from
-  // the disposal. Since DisposalResult doesn't store quantity directly,
-  // we derive it from costBasis and the original lot's per-unit basis.
-  // However, the simplest approach: use proceeds and gainOrLoss to get a
-  // meaningful description. Actually, we have costBasis and proceeds,
-  // and the lotId. The amount isn't on DisposalResult directly.
-  // We'll just show the asset name — the amount can be inferred from
-  // the proceeds/cost basis columns.
   return {
-    description: `${d.asset}`,
+    description: `${formatCryptoAmount(d.amount)} ${d.asset}`,
     dateAcquired: d.acquisitionDate,
     dateSold: d.disposalDate,
     proceeds: d.proceeds,

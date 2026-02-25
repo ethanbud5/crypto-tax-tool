@@ -36,6 +36,7 @@ export function processDisposal(
 
     results.push({
       asset,
+      amount: lot.amount,
       disposalDate,
       disposalType,
       proceeds: lotProceeds,
