@@ -69,13 +69,14 @@ export function calculateTaxes(
         case TransactionType.GIFT_RECEIVED: {
           const asset = tx.receivedAsset!;
           const amount = tx.receivedAmount!;
+          const feeUsd = tx.feeUsd ?? new Decimal(0);
 
           // Prefer actual USD spent over enriched daily close price.
-          // sentAmount/receivedAmount gives the real execution price.
+          // Exchange fees are added to cost basis (total acquisition cost).
           const priceUsd =
             tx.sentAsset?.toUpperCase() === "USD" && tx.sentAmount
-              ? tx.sentAmount.div(amount)
-              : (tx.receivedAssetPriceUsd ?? new Decimal(0));
+              ? tx.sentAmount.plus(feeUsd).div(amount)
+              : (tx.receivedAssetPriceUsd ?? new Decimal(0)).plus(feeUsd.div(amount));
 
           lotPool.addLot({
             id: lotPool.generateLotId(),
@@ -134,10 +135,15 @@ export function calculateTaxes(
           // Prefer actual USD received over computed amount × price.
           // The daily close price is only an approximation; the real
           // execution price (USD received) is authoritative.
-          const proceeds =
+          const grossProceeds =
             tx.receivedAsset?.toUpperCase() === "USD" && tx.receivedAmount
               ? tx.receivedAmount
               : amount.mul(tx.sentAssetPriceUsd ?? new Decimal(0));
+
+          // Exchange fees are selling expenses that reduce proceeds
+          const proceeds = tx.feeUsd
+            ? grossProceeds.minus(tx.feeUsd)
+            : grossProceeds;
 
           const results = processDisposal(
             lotPool,

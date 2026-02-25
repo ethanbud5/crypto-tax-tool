@@ -308,7 +308,8 @@ describe("calculateTaxes", () => {
         sentAmount: new Decimal("0.5"),
         sentAssetPriceUsd: new Decimal(3280), // daily close (approximation)
         receivedAsset: "USD",
-        receivedAmount: new Decimal("1724.08"), // actual USD received
+        receivedAmount: new Decimal("1724.08"), // actual gross USD received
+        feeUsd: new Decimal("10.34"),
         wallet: "Coinbase",
       }),
     ];
@@ -316,11 +317,11 @@ describe("calculateTaxes", () => {
     const result = calculateTaxes(transactions, CostBasisMethod.FIFO);
 
     expect(result.disposals).toHaveLength(1);
-    // Proceeds should be the actual USD received, not 0.5 * 3280 = 1640
-    expect(result.disposals[0].proceeds.toNumber()).toBe(1724.08);
+    // Proceeds = actual USD received - fee = 1724.08 - 10.34 = 1713.74
+    expect(result.disposals[0].proceeds.toNumber()).toBeCloseTo(1713.74, 2);
   });
 
-  it("BUY with USD sent uses actual USD amount for cost basis", () => {
+  it("BUY with USD sent uses actual USD amount + fee for cost basis", () => {
     const transactions: Transaction[] = [
       tx({
         dateTime: new Date("2024-01-01T00:00:00Z"),
@@ -330,15 +331,16 @@ describe("calculateTaxes", () => {
         receivedAssetPriceUsd: new Decimal(95000), // daily close (approximation)
         sentAsset: "USD",
         sentAmount: new Decimal("2069.54"), // actual USD spent
+        feeUsd: new Decimal("10"),
         wallet: "Coinbase",
       }),
     ];
 
     const result = calculateTaxes(transactions, CostBasisMethod.FIFO);
 
-    // Cost basis per unit should be 2069.54 / 0.02 = 103477, not 95000
+    // Cost basis per unit = (2069.54 + 10) / 0.02 = 103977
     const lot = result.remainingLots[0];
-    expect(lot.costBasisPerUnit.toNumber()).toBeCloseTo(103477, 0);
+    expect(lot.costBasisPerUnit.toNumber()).toBeCloseTo(103977, 0);
   });
 
   it("insufficient lots produces an error, not a crash", () => {
@@ -517,11 +519,14 @@ describe("end-to-end: CSV → parse → calculate → report", () => {
       calcResult.warnings,
     );
 
-    // Sell 0.5 BTC @ $50k = $25k proceeds, basis = 0.5 * $30k = $15k, gain = $10k
+    // BUY cost basis per unit: ($30000 + $10 fee) / 1.0 = $30010
+    // SELL 0.5 BTC: proceeds = $25000 - $5 fee = $24995
+    // Cost basis = 0.5 * $30010 = $15005
+    // Gain = $24995 - $15005 = $9990
     expect(report.disposals).toHaveLength(1);
-    expect(report.disposals[0].proceeds.toNumber()).toBe(25000);
-    expect(report.disposals[0].costBasis.toNumber()).toBe(15000);
-    expect(report.scheduleDSummary.totalNetGainOrLoss.toNumber()).toBe(10000);
+    expect(report.disposals[0].proceeds.toNumber()).toBe(24995);
+    expect(report.disposals[0].costBasis.toNumber()).toBe(15005);
+    expect(report.scheduleDSummary.totalNetGainOrLoss.toNumber()).toBe(9990);
 
     // 0.5 BTC should remain
     const btcRemaining = report.remainingLots.filter(
